@@ -184,35 +184,3 @@ WHERE
     AND O.OrderDate BETWEEN '2022-01-01' AND '2023-01-01'
 ORDER BY 
     O.OrderDate DESC;
-
-Document Results:
-
-Measure and document the execution time, I/O statistics, and compare the execution plans before and after each optimization.
-Step 3: Reporting
-
-Summary Report:
-
-Summarize the impact of indexing, query refactoring, and any other optimization techniques applied. Include execution times before and after 
-optimizations, and describe the observed changes in performance.
-Recommendations:
-
-Suggest best practices for maintaining performance, such as regular index maintenance, avoiding unnecessary subqueries, and using appropriate 
-transaction isolation levels.
-Part 3: Presentation
-
-Presentation:
-Create slides summarizing your project, including key terminologies, the steps taken for optimization, and the results. You could use 
-screenshots of execution plans, query statistics, and comparison charts to illustrate your findings.
-Deliverables:
-SQL Scripts:
-
-Scripts for setting up the database, populating tables, running queries, and creating indexes.
-Execution Plans:
-
-Saved execution plans or screenshots from SSMS showing the query's execution before and after optimization.
-Summary Report:
-
-A report documenting the optimization process, the results, and any recommendations for future improvements.
-Presentation:
-
-A slide deck summarizing your work and findings.
