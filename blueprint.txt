@@ -1,0 +1,198 @@
+Project Execution: SQL Performance Optimization and Key Terminologies
+
+Part 1: Understanding Key Terminologies
+Index: An index is a database object that improves the speed of data retrieval operations on a table at the cost of additional storage space and 
+slower write operations (inserts, updates, deletes). Indexes can be created on one or more columns to allow the database engine to quickly locate the 
+rows without scanning the entire table.
+
+Primary Key vs. Foreign Key: A Primary Key uniquely identifies each record in a table. It must contain unique values and cannot contain NULLs. 
+A Foreign Key is a column or a set of columns in one table that references the primary key columns in another table, establishing a relationship between 
+the two tables.
+
+Normalization: Normalization is the process of organizing a database into tables and columns to reduce redundancy and improve data integrity. 
+This involves dividing large tables into smaller, related tables and linking them with relationships (keys).
+
+Denormalization: Denormalization is the process of combining tables to reduce the complexity of joins and improve query performance, often at the cost 
+of data redundancy and potential integrity issues.
+
+Execution Plan: An execution plan is a detailed breakdown of how SQL Server executes a query, showing the steps taken to retrieve or modify data. 
+It includes information about table scans, index usage, joins, and other operations, helping identify performance bottlenecks.
+
+Query Caching: Query caching stores the results of frequently executed queries in memory so that future requests for the same query can be served 
+faster without re-executing the query.
+
+JOIN vs. Subquery: JOINs combine rows from two or more tables based on a related column. Subqueries are queries nested within other queries. 
+JOINs are generally more efficient than subqueries, especially when dealing with large datasets.
+
+ACID Properties: ACID stands for Atomicity, Consistency, Isolation, and Durability. These properties ensure that database transactions are processed 
+reliably, maintaining data integrity even in the event of errors, crashes, or concurrent transactions.
+
+Transaction Isolation Levels: Transaction Isolation Levels determine the visibility of changes made by one transaction to other concurrent transactions. 
+They include levels such as Read Uncommitted, Read Committed, Repeatable Read, and Serializable, each offering a different balance between data accuracy 
+and performance.
+
+Deadlock: A deadlock occurs when two or more transactions are waiting for each other to release locks, creating a cycle of dependencies that prevents 
+any of them from proceeding. Deadlocks can be mitigated by proper transaction design, lock management, and using SQL Server’s deadlock detection and 
+resolution mechanisms.
+
+Part 2: Practical SQL Performance Optimization
+Step 1: Set Up the Sample Database
+-- Create the Customers table
+CREATE TABLE Customers (
+    CustomerID INT PRIMARY KEY IDENTITY,
+    CustomerName NVARCHAR(100),
+    ContactName NVARCHAR(100),
+    Country NVARCHAR(50)
+);
+
+-- Create the Products table
+CREATE TABLE Products (
+    ProductID INT PRIMARY KEY IDENTITY,
+    ProductName NVARCHAR(100),
+    SupplierID INT,
+    CategoryID INT,
+    Unit NVARCHAR(20),
+    Price DECIMAL(10, 2)
+);
+
+-- Create the Orders table
+CREATE TABLE Orders (
+    OrderID INT PRIMARY KEY IDENTITY,
+    CustomerID INT FOREIGN KEY REFERENCES Customers(CustomerID),
+    OrderDate DATE,
+    ShipperID INT
+);
+
+-- Create the OrderDetails table
+CREATE TABLE OrderDetails (
+    OrderDetailID INT PRIMARY KEY IDENTITY,
+    OrderID INT FOREIGN KEY REFERENCES Orders(OrderID),
+    ProductID INT FOREIGN KEY REFERENCES Products(ProductID),
+    Quantity INT,
+    UnitPrice DECIMAL(10, 2)
+);
+
+-- Insert sample data (example with random data generation)
+DECLARE @i INT = 1;
+WHILE @i <= 10000
+BEGIN
+    INSERT INTO Customers (CustomerName, ContactName, Country)
+    VALUES ('Customer ' + CAST(@i AS NVARCHAR(10)), 'Contact ' + CAST(@i AS NVARCHAR(10)), 'Country ' + CAST((@i % 10) + 1 AS NVARCHAR(10)));
+
+    SET @i = @i + 1;
+END;
+
+DECLARE @j INT = 1;
+WHILE @j <= 50000
+BEGIN
+    INSERT INTO Products (ProductName, SupplierID, CategoryID, Unit, Price)
+    VALUES ('Product ' + CAST(@j AS NVARCHAR(10)), @j % 50 + 1, @j % 10 + 1, 'Unit ' + CAST(@j AS NVARCHAR(10)), RAND() * 100);
+
+    SET @j = @j + 1;
+END;
+
+-- Insert sample data for Orders and OrderDetails with nested loops
+DECLARE @k INT = 1;
+WHILE @k <= 10000
+BEGIN
+    INSERT INTO Orders (CustomerID, OrderDate, ShipperID)
+    VALUES (@k % 10000 + 1, DATEADD(DAY, -@k, GETDATE()), @k % 5 + 1);
+
+    SET @k = @k + 1;
+END;
+
+DECLARE @l INT = 1;
+WHILE @l <= 50000
+BEGIN
+    INSERT INTO OrderDetails (OrderID, ProductID, Quantity, UnitPrice)
+    VALUES (@l % 10000 + 1, @l % 50000 + 1, @l % 10 + 1, RAND() * 100);
+
+    SET @l = @l + 1;
+END;
+
+Step 2: Performance Testing and Optimization
+-- A complex query with multiple JOINs and filtering conditions
+SELECT 
+    C.CustomerName,
+    O.OrderID,
+    OD.ProductID,
+    P.ProductName,
+    OD.Quantity,
+    OD.UnitPrice,
+    O.OrderDate
+FROM 
+    Customers C
+    JOIN Orders O ON C.CustomerID = O.CustomerID
+    JOIN OrderDetails OD ON O.OrderID = OD.OrderID
+    JOIN Products P ON OD.ProductID = P.ProductID
+WHERE 
+    C.Country = 'Country 1'
+    AND O.OrderDate BETWEEN '2022-01-01' AND '2023-01-01'
+ORDER BY 
+    O.OrderDate DESC;
+
+Analyze Execution Plan:
+
+Use SET STATISTICS TIME, IO ON; before running the query to get timing and I/O statistics.
+Execute EXPLAIN or view the execution plan in SQL Server Management Studio (SSMS) to identify potential bottlenecks.
+Optimization Techniques:
+
+Indexing:
+-- Create indexes on frequently used columns in WHERE and JOIN clauses
+CREATE INDEX IDX_Customers_Country ON Customers(Country);
+CREATE INDEX IDX_Orders_OrderDate ON Orders(OrderDate);
+CREATE INDEX IDX_OrderDetails_ProductID ON OrderDetails(ProductID);
+
+Query Refactoring:
+
+Compare performance using a JOIN vs. a subquery:
+-- Using a subquery
+SELECT 
+    C.CustomerName,
+    O.OrderID,
+    P.ProductName,
+    OD.Quantity,
+    OD.UnitPrice,
+    O.OrderDate
+FROM 
+    Customers C
+    JOIN Orders O ON C.CustomerID = O.CustomerID
+    JOIN OrderDetails OD ON O.OrderID = OD.OrderID
+    JOIN Products P ON OD.ProductID = P.ProductID
+WHERE 
+    O.CustomerID IN (SELECT CustomerID FROM Customers WHERE Country = 'Country 1')
+    AND O.OrderDate BETWEEN '2022-01-01' AND '2023-01-01'
+ORDER BY 
+    O.OrderDate DESC;
+
+Document Results:
+
+Measure and document the execution time, I/O statistics, and compare the execution plans before and after each optimization.
+Step 3: Reporting
+
+Summary Report:
+
+Summarize the impact of indexing, query refactoring, and any other optimization techniques applied. Include execution times before and after 
+optimizations, and describe the observed changes in performance.
+Recommendations:
+
+Suggest best practices for maintaining performance, such as regular index maintenance, avoiding unnecessary subqueries, and using appropriate 
+transaction isolation levels.
+Part 3: Presentation
+
+Presentation:
+Create slides summarizing your project, including key terminologies, the steps taken for optimization, and the results. You could use 
+screenshots of execution plans, query statistics, and comparison charts to illustrate your findings.
+Deliverables:
+SQL Scripts:
+
+Scripts for setting up the database, populating tables, running queries, and creating indexes.
+Execution Plans:
+
+Saved execution plans or screenshots from SSMS showing the query's execution before and after optimization.
+Summary Report:
+
+A report documenting the optimization process, the results, and any recommendations for future improvements.
+Presentation:
+
+A slide deck summarizing your work and findings.
