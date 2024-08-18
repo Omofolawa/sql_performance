@@ -1,2 +1,2 @@
 # sql_performance
-This project was conducted to showcase the ability to understand and optimize slow or inefficient SQL queries.
+This project showcased my ability to optimize slow or inefficient SQL queries.
